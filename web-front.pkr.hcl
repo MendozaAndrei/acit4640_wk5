@@ -29,7 +29,6 @@ source "amazon-ebs" "debian" {
 build {
   name = "web-nginx"
   sources = [
-    # COMPLETE ME Use the source defined above
     "source.amazon-ebs.debian"
   ]
   
@@ -37,53 +36,43 @@ build {
   provisioner "shell" {
     inline = [
       "echo creating directories",
-      # create directories for website content and a temp location for files
-      "sudo mkdir -p /web/html /tmp/web",
-      # try to set ownership so the default user can manage files; don't fail the build if group doesn't exist
-      "sudo chown -R admin:admin /web /tmp/web || true"
+      # create directories for website content
+      "sudo mkdir -p /web/html",
+  # set ownership for web files
+  "sudo chown -R admin:admin /web"
     ]
   }
 
+  # run the installer
+  provisioner "shell" {
+    script = "scripts/install-nginx"
+  }
 
-
-
-
-  #Provisioner file that transfers the contents to the required folder
+  #Upload files
   provisioner "file" {
     source      = "files/index.html"
-    destination = "/tmp/web/index.html"
+    destination = "/web/html/index.html"
   }
 
+  #Temporary location for nginx.conf
   provisioner "file" {
     source      = "files/nginx.conf"
-    destination = "/tmp/web/nginx.conf"
+    destination = "/home/admin/nginx.conf"
   }
 
-
-
-
-
-#Provisioner block that is used to install the nginx agent. 
-provisioner "file" {
-    source      = "scripts/install-nginx"
-    destination = "/tmp/install-nginx"
-  }
-
-  #Provisioner block that is used to set up NGINX
-  provisioner "file" {
-    source      = "scripts/setup-nginx"
-    destination = "/tmp/setup-nginx"
-  }
-
+  # Move nginx config into place and restart nginx
   provisioner "shell" {
     inline = [
-      "sudo chmod +x /tmp/install-nginx /tmp/setup-nginx || true",
-      "sudo /tmp/install-nginx",
-      "sudo /tmp/setup-nginx",
-      "sudo mkdir -p /web/html",
-      "sudo cp /tmp/web/index.html /web/html/index.html",
-      "sudo chown -R admin:admin /web/html || true",
-      "sudo systemctl restart nginx || sudo service nginx restart || true"
+      # move nginx.conf into place and enable the site
+      "sudo mv /home/admin/nginx.conf /etc/nginx/sites-available/nginx.conf",
+      "sudo rm -f /etc/nginx/sites-enabled/*",
+      "sudo ln -s /etc/nginx/sites-available/nginx.conf /etc/nginx/sites-enabled/",
+
+      # ensure site root exists and index.html is in place (file provisioner wrote /web/html/index.html)
+      "sudo chown -R admin:admin /web/html",
+
+      #Restart 
+      "sudo systemctl restart nginx"
     ]
   }
 }
