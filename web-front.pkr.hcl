@@ -44,6 +44,11 @@ build {
     ]
   }
 
+
+
+
+
+  #Provisioner file that transfers the contents to the required folder
   provisioner "file" {
     source      = "files/index.html"
     destination = "/tmp/web/index.html"
@@ -54,12 +59,17 @@ build {
     destination = "/tmp/web/nginx.conf"
   }
 
-  # upload the helper scripts and run them to install and configure nginx
-  provisioner "file" {
+
+
+
+
+#Provisioner block that is used to install the nginx agent. 
+provisioner "file" {
     source      = "scripts/install-nginx"
     destination = "/tmp/install-nginx"
   }
 
+  #Provisioner block that is used to set up NGINX
   provisioner "file" {
     source      = "scripts/setup-nginx"
     destination = "/tmp/setup-nginx"
@@ -70,11 +80,9 @@ build {
       "sudo chmod +x /tmp/install-nginx /tmp/setup-nginx || true",
       "sudo /tmp/install-nginx",
       "sudo /tmp/setup-nginx",
-      # copy website content into the configured web root and set ownership
       "sudo mkdir -p /web/html",
       "sudo cp /tmp/web/index.html /web/html/index.html",
       "sudo chown -R admin:admin /web/html || true",
-      # ensure nginx is running and pick up the configuration
       "sudo systemctl restart nginx || sudo service nginx restart || true"
     ]
   }
